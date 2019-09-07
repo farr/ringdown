@@ -5,12 +5,14 @@ functions {
 }
 
 data {
+  int nobs;
   int nsamp;
   int nmode;
 
-  vector[nsamp] ts;
-  vector[nsamp] strain[2];
-  matrix[nsamp,nsamp] L[2];
+  real t0[nobs];
+  vector[nsamp] ts[nobs];
+  vector[nsamp] strain[nobs];
+  matrix[nsamp,nsamp] L[nobs];
 
   vector[nmode] mu_logf;
   vector[nmode] sigma_logf;
@@ -18,15 +20,28 @@ data {
   vector[nmode] mu_loggamma;
   vector[nmode] sigma_loggamma;
 
+  vector[2] FpFc[nobs];
+
   real Amax;
 }
 
 parameters {
   vector<lower=0>[nmode] f;
-  vector<lower=0>[nmode] gamma;
+  positive_ordered[nmode] gamma;
 
   vector<lower=0, upper=Amax>[nmode] A;
   unit_vector[2] xy[nmode];
+}
+
+transformed parameters {
+  vector[nsamp] h_det[nobs];
+
+  for (i in 1:nobs) {
+    h_det[i] = rep_vector(0.0, nsamp);
+    for (j in 1:nmode) {
+      h_det[i] = h_det[i] + rd(ts[i]-t0[i], FpFc[i][1]*A[j]*xy[j][1], FpFc[i][2]*A[j]*xy[j][2], gamma[j], f[j]);
+    }
+  }
 }
 
 model {
@@ -36,13 +51,7 @@ model {
   /* Uniform prior on phi. */
 
   /* Likelihood */
-  for (i in 1:2) {
-    vector[nsamp] h = rep_vector(0.0, nsamp);
-
-    for (j in 1:nmode) {
-      h = h + rd(ts, A[j]*xy[j][1], A[j]*xy[j][2], gamma[j], f[j]);
-    }
-
-    strain[i] ~ multi_normal_cholesky(h, L[i]);
+  for (i in 1:nobs) {
+    strain[i] ~ multi_normal_cholesky(h_det[i], L[i]);
   }
 }
