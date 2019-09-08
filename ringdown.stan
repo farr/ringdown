@@ -1,6 +1,6 @@
 functions {
-  vector rd(vector t, real Ax, real Ay, real gamma, real f) {
-    return exp(-t*gamma).*(Ax*cos(2*pi()*f*t) + Ay*sin(2*pi()*f*t));
+  vector rd(vector t, real Ap, real Ac, real Fp, real Fc, real phi, real gamma, real f) {
+    return exp(-t*gamma).*(Fp*Ap*cos(2*pi()*f*t + phi) + Fc*Ac*sin(2*pi()*f*t + phi));
   }
 }
 
@@ -30,16 +30,22 @@ parameters {
   positive_ordered[nmode] gamma;
 
   vector<lower=0, upper=Amax>[nmode] A;
-  unit_vector[2] xy[nmode];
+  unit_vector[2] xy_pol[nmode];
+  unit_vector[2] xy_phase[nmode];
 }
 
 transformed parameters {
+  vector[nmode] phi;
   vector[nsamp] h_det[nobs];
+
+  for (i in 1:nmode) {
+    phi[i] = atan2(xy_phase[i][2], xy_phase[i][1]);
+  }
 
   for (i in 1:nobs) {
     h_det[i] = rep_vector(0.0, nsamp);
     for (j in 1:nmode) {
-      h_det[i] = h_det[i] + rd(ts[i]-t0[i], FpFc[i][1]*A[j]*xy[j][1], FpFc[i][2]*A[j]*xy[j][2], gamma[j], f[j]);
+      h_det[i] = h_det[i] + rd(ts[i]-t0[i], A[j]*xy_pol[j][1], A[j]*xy_pol[j][2], FpFc[i][1], FpFc[i][2], phi[j], gamma[j], f[j]);
     }
   }
 }
