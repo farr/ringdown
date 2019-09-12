@@ -45,6 +45,7 @@ transformed data {
 }
 
 parameters {
+  real<lower=-5e-3, upper=5e-3> dt_L;
   real<lower=0> f0;
   real<lower=0> gamma0;
 
@@ -61,6 +62,11 @@ transformed parameters {
   vector[nmode] phi;
   vector[nsamp] h_det[nobs];
 
+  vector[2] t0_actual;
+
+  t0_actual[1] = t0[1];
+  t0_actual[2] = t0[2] + dt_L;
+
   f[1] = f0;
   gamma[1] = gamma0;
 
@@ -76,12 +82,14 @@ transformed parameters {
   for (i in 1:nobs) {
     h_det[i] = rep_vector(0.0, nsamp);
     for (j in 1:nmode) {
-      h_det[i] = h_det[i] + rd(ts[i]-t0[i], cos_inc, A[j], FpFc[i][1], FpFc[i][2], phi[j], gamma[j], f[j]);
+      h_det[i] = h_det[i] + rd(ts[i]-t0_actual[i], cos_inc, A[j], FpFc[i][1], FpFc[i][2], phi[j], gamma[j], f[j]);
     }
   }
 }
 
 model {
+  dt_L ~ normal(0, 5e-4);
+
   f0 ~ lognormal(mu_logf, sigma_logf);
   gamma0 ~ lognormal(mu_loggamma, sigma_loggamma);
 
