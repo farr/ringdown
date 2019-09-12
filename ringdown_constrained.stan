@@ -41,7 +41,7 @@ data {
 }
 
 transformed data {
-  int nmode=2;
+  int nmode = 2;
 }
 
 parameters {
