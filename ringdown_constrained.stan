@@ -38,6 +38,8 @@ data {
   real cos_inc;
 
   real Amax;
+
+  real df_dg_max;
 }
 
 transformed data {
@@ -49,8 +51,8 @@ parameters {
   real<lower=0> f0;
   real<lower=0> gamma0;
 
-  real<lower=-0.5, upper=0.5> df1;
-  real<lower=-0.5, upper=0.5> dg1;
+  real<lower=-df_dg_max, upper=df_dg_max> df1;
+  real<lower=-df_dg_max, upper=df_dg_max> dg1;
 
   vector<lower=0, upper=Amax>[nmode] A;
   unit_vector[2] xy_phase[nmode];
