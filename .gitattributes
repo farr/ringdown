@@ -1,3 +1,4 @@
 **/*.hdf5 filter=lfs diff=lfs merge=lfs -text
 **/*.nc filter=lfs diff=lfs merge=lfs -text
 *.dat.gz filter=lfs diff=lfs merge=lfs -text
+paperfits/gw150914_gwtc1_imr_remnant_samples_randomangle.txt filter=lfs diff=lfs merge=lfs -text
