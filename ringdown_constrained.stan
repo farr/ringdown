@@ -2,13 +2,31 @@ functions {
   real f_constrained(real f0, real gamma0) {
     real x = log(f0/gamma0);
 
-    return f0*(0.97598764 + x*(0.06695086 + x*(-0.09355756 + x*(0.06990699 - x*0.02013998))));
+    real log1mf = -3.71411153 + x*(-2.76591614 + x*(-0.23758466 + x*(0.15179355 - x*0.03618724)));
+
+    return -f0*expm1(log1mf);
   }
 
   real g_constrained(real f0, real gamma0) {
     real x = log(f0/gamma0);
 
-    return gamma0*(3.02608227 + x*(-0.06722567 + x*(0.11394527 + x*(-0.10399184 + x*0.03334442))));
+    real loggamm3 = -3.59764966 + x*(-2.30739315 + x*(0.42826231 + x*(-0.96875461 + x*0.30154111)));
+
+    return gamma0*(3 + exp(loggamm3));
+  }
+
+  real chi(real f0, real gamma0) {
+    real x = log(f0/gamma0);
+
+    real log1mchi = -1.0804979 + x*(-2.5688046 + x*(0.27351776 + x*(-0.05828812 + x*0.00361861)));
+
+    return -expm1(log1mchi);
+  }
+
+  real ffactor(real f0, real gamma0) {
+    real x = log(f0/gamma0);
+
+    return 0.08215104 + x*(0.0542529 + x*(-0.00804415 + x*(-0.00415015 + x*0.00123021)));
   }
 
   vector rd(vector t, real cos_inc, real A, real Fp, real Fc, real phi, real gamma, real f) {
@@ -48,7 +66,7 @@ transformed data {
 
 parameters {
   real<lower=0> f0;
-  real<lower=exp(-1.546)*f0, upper=exp(0.399)*f0> gamma0;
+  real<lower=exp(-2.670)*f0, upper=exp(0.403)*f0> gamma0;
 
   real<lower=-df_dg_max, upper=df_dg_max> df1;
   real<lower=-df_dg_max, upper=df_dg_max> dg1;
@@ -96,4 +114,9 @@ model {
   for (i in 1:nobs) {
     strain[i] ~ multi_normal_cholesky(h_det[i], L[i]);
   }
+}
+
+generated quantities {
+  real M0 = 68.0*2.98e3/(f0/ffactor(f0,gamma0));
+  real chi0 = chi(f0, gamma0);
 }
