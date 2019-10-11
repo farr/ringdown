@@ -1,32 +1,26 @@
 functions {
-  real f_constrained(real f0, real gamma0) {
-    real x = log(f0/gamma0);
+  real f0_factor(real chi) {
+    real log1mc = log1p(-chi);
 
-    real log1mf = -3.71411153 + x*(-2.76591614 + x*(-0.23758466 + x*(0.15179355 - x*0.03618724)));
-
-    return -f0*expm1(log1mf);
+    return -0.00823557*log1mc + 0.05994978 + chi*(-0.00106621 + chi*(0.08354181 + chi*(-0.15165638 + chi*0.11021346)));
   }
 
-  real g_constrained(real f0, real gamma0) {
-    real x = log(f0/gamma0);
+  real f1_factor(real chi) {
+    real log1mc = log1p(-chi);
 
-    real loggamm3 = -3.59764966 + x*(-2.30739315 + x*(0.42826231 + x*(-0.96875461 + x*0.30154111)));
-
-    return gamma0*(3 + exp(loggamm3));
+    return -0.00817462*log1mc + 0.05566214 + chi*(0.00174686 + chi*(0.08531498 + chi*(-0.15464552 + chi*0.11325923)));
   }
 
-  real chi(real f0, real gamma0) {
-    real x = log(f0/gamma0);
+  real g0_factor(real chi) {
+    real log1mc = log1p(-chi);
 
-    real log1mchi = -1.0804979 + x*(-2.5688046 + x*(0.27351776 + x*(-0.05828812 + x*0.00361861)));
-
-    return -expm1(log1mchi);
+    return 0.01180702*log1mc + 0.08838127 + chi*(0.02528302 + chi*(-0.09002286 + chi*(0.18245511 - chi*0.12162592)));
   }
 
-  real ffactor(real f0, real gamma0) {
-    real x = log(f0/gamma0);
+  real g1_factor(real chi) {
+    real log1mc = log1p(-chi);
 
-    return 0.08215104 + x*(0.0542529 + x*(-0.00804415 + x*(-0.00415015 + x*0.00123021)));
+    return 0.03544845*log1mc + 0.27212686 + chi*(0.0702625 + chi*(-0.27797961 + chi*(0.55851284 - chi*0.36945098)));
   }
 
   vector rd(vector t, real cos_inc, real A, real Fp, real Fc, real phi, real gamma, real f) {
@@ -43,13 +37,9 @@ data {
   vector[nsamp] strain[nobs];
   matrix[nsamp,nsamp] L[nobs];
 
-  /* For fundamental mode. */
-  real mu_logf;
-  real sigma_logf;
-
-  /* For fundamental mode. */
-  real mu_loggamma;
-  real sigma_loggamma;
+  /* Priors on m and chi are flat */
+  real MMin;
+  real MMax;
 
   vector[2] FpFc[nobs];
 
@@ -57,7 +47,8 @@ data {
 
   real Amax;
 
-  real df_dg_max;
+  real df_max;
+  real dtau_max;
 }
 
 transformed data {
@@ -65,33 +56,40 @@ transformed data {
 }
 
 parameters {
-  real<lower=0> f0;
-  real<lower=exp(-2.670)*f0, upper=exp(0.403)*f0> gamma0;
+  real<lower=MMin, upper=MMax> M;
+  real<lower=0, upper=1> chi;
 
-  real<lower=-df_dg_max, upper=df_dg_max> df1;
-  real<lower=-df_dg_max, upper=df_dg_max> dg1;
+  real<lower=-df_max, upper=df_max> df1;
+  real<lower=-dtau_max, upper=dtau_max> dtau1;
 
-  vector<lower=0, upper=Amax>[nmode] A;
-  unit_vector[2] xy_phase[nmode];
+  vector<lower=-Amax, upper=Amax>[nmode] Ax;
+  vector<lower=-Amax, upper=Amax>[nmode] Ay;
 }
 
 transformed parameters {
   vector[nmode] gamma;
   vector[nmode] f;
   vector[nmode] phi;
+  vector[nmode] A = sqrt(Ax .* Ax + Ay .* Ay);
   vector[nsamp] h_det[nobs];
 
-  f[1] = f0;
-  gamma[1] = gamma0;
+  for (i in 1:nmode) {
+    phi[i] = atan2(Ay[i], Ax[i]);
+  }
 
-  f[2] = (1+df1)*f_constrained(f0, gamma0);
-  gamma[2] = (1+dg1)*g_constrained(f0, gamma0);
+  {
+    real fref = 2980.0;
+    real mref = 68.0;
+
+    real f0 = fref*mref/M;
+
+    f[1] = f0*f0_factor(chi);
+    f[2] = f0*f1_factor(chi)*(1 + df1);
+    gamma[1] = f0*g0_factor(chi);
+    gamma[2] = f0*g1_factor(chi)/(1 + dtau1);
+  }
 
   if (gamma[2] < gamma[1]) reject("gamma[2] < gamma[1], so reject");
-
-  for (i in 1:nmode) {
-    phi[i] = atan2(xy_phase[i][2], xy_phase[i][1]);
-  }
 
   for (i in 1:nobs) {
     h_det[i] = rep_vector(0.0, nsamp);
@@ -102,21 +100,17 @@ transformed parameters {
 }
 
 model {
-  f0 ~ lognormal(mu_logf, sigma_logf);
-  gamma0 ~ lognormal(mu_loggamma, sigma_loggamma);
+  /* Flat prior on M, chi */
 
   /* Flat prior on the delta-fs. */
 
-  /* Flat prior on the A. */
+  /* Flat prior on the |A| => 1/|A| jacobian to Ax, Ay. */
+  target += -sum(log(A));
+
   /* Uniform prior on phi. */
 
   /* Likelihood */
   for (i in 1:nobs) {
     strain[i] ~ multi_normal_cholesky(h_det[i], L[i]);
   }
-}
-
-generated quantities {
-  real M0 = 68.0*2.98e3/(f0/ffactor(f0,gamma0));
-  real chi0 = chi(f0, gamma0);
 }
