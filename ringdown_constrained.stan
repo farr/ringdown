@@ -48,7 +48,7 @@ transformed data {
 
 parameters {
   real<lower=0> f0;
-  real<lower=0> gamma0;
+  real<lower=exp(-1.546)*f0, upper=exp(0.399)*f0> gamma0;
 
   real<lower=-df_dg_max, upper=df_dg_max> df1;
   real<lower=-df_dg_max, upper=df_dg_max> dg1;
