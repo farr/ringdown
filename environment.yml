@@ -13,9 +13,10 @@ dependencies:
   - matplotlib
   - numpy
   - pandas
+  - pip
   - pystan
   - python=3.7
   - scipy
   - seaborn
   - pip:
-    qnm
+    - qnm
