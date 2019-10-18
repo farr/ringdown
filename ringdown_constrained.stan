@@ -43,12 +43,13 @@ data {
 
   vector[2] FpFc[nobs];
 
-  real cos_inc;
-
   real Amax;
 
   real df_max;
   real dtau_max;
+
+  real dt_min;
+  real dt_max;
 }
 
 transformed data {
@@ -64,6 +65,10 @@ parameters {
 
   vector<lower=-Amax, upper=Amax>[nmode] Ax;
   vector<lower=-Amax, upper=Amax>[nmode] Ay;
+
+  vector<lower=dt_min, upper=dt_max>[nobs-1] dts;
+
+  real<lower=-1, upper=1> cos_inc;
 }
 
 transformed parameters {
@@ -92,9 +97,17 @@ transformed parameters {
   if (gamma[2] < gamma[1]) reject("gamma[2] < gamma[1], so reject");
 
   for (i in 1:nobs) {
+    real torigin;
     h_det[i] = rep_vector(0.0, nsamp);
+
+    if (i > 1) {
+      torigin = t0[i] + dts[i-1];
+    } else {
+      torigin = t0[i];
+    }
+
     for (j in 1:nmode) {
-      h_det[i] = h_det[i] + rd(ts[i]-t0[i], cos_inc, A[j], FpFc[i][1], FpFc[i][2], phi[j], gamma[j], f[j]);
+      h_det[i] = h_det[i] + rd(ts[i]-torigin, cos_inc, A[j], FpFc[i][1], FpFc[i][2], phi[j], gamma[j], f[j]);
     }
   }
 }
